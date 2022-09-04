@@ -1,4 +1,4 @@
-/* Copyright (c) 2007-2014 Massachusetts Institute of Technology
+/* Copyright (c) 2022 Massachusetts Institute of Technology
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -20,50 +20,52 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/* Matlab MEX interface to NLopt, and in particular to nlopt_optimize */
+/* Baltam bex interface to NLopt, and in particular to nlopt_optimize */
 
 #include <math.h>
-#include <mex.h>
+#include <bex/bex.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "nlopt.h"
+#define bexWarnMsgTxt  bxPrintf
+
 
 #define CHECK0(cond, msg)                                                                                              \
     if (!(cond))                                                                                                       \
-        mexErrMsgTxt(msg);
+        bxErrMsgTxt(msg);
 
-static double struct_val_default(const mxArray *s, const char *name, double dflt)
+static double struct_val_default(const bxArray *s, const char *name, double dflt)
 {
-    mxArray *val = mxGetField(s, 0, name);
+    bxArray *val = bxGetField(s, 0, name);
     if (val)
     {
-        CHECK0(mxIsNumeric(val) && !mxIsComplex(val) && mxGetM(val) * mxGetN(val) == 1,
+        CHECK0(bxIsNumeric(val) && !bxIsComplex(val) && bxGetM(val) * bxGetN(val) == 1,
                "opt fields, other than xtol_abs, must be real scalars");
-        return mxGetScalar(val);
+        return bxGetScalar(val);
     }
     return dflt;
 }
 
-static double *struct_arrval(const mxArray *s, const char *name, unsigned n, double *dflt)
+static double *struct_arrval(const bxArray *s, const char *name, unsigned n, double *dflt)
 {
-    mxArray *val = mxGetField(s, 0, name);
+    bxArray *val = bxGetField(s, 0, name);
     if (val)
     {
-        CHECK0(mxIsNumeric(val) && !mxIsComplex(val) && mxGetM(val) * mxGetN(val) == n,
+        CHECK0(bxIsNumeric(val) && !bxIsComplex(val) && bxGetM(val) * bxGetN(val) == n,
                "opt vector field is not of length n");
-        return mxGetPr(val);
+        return bxGetPr(val);
     }
     return dflt;
 }
 
-static mxArray *struct_funcval(const mxArray *s, const char *name)
+static bxArray *struct_funcval(const bxArray *s, const char *name)
 {
-    mxArray *val = mxGetField(s, 0, name);
+    bxArray *val = bxGetField(s, 0, name);
     if (val)
     {
-        CHECK0(mxIsChar(val) || mxIsFunctionHandle(val), "opt function field is not a function handle/name");
+        CHECK0(bxIsChar(val) || bxIsFunctionHandle(val), "opt function field is not a function handle/name");
         return val;
     }
     return NULL;
@@ -82,8 +84,8 @@ static double *fill(double *arr, unsigned n, double val)
 typedef struct user_function_data_s
 {
     char f[FLEN];
-    mxArray *plhs[2];
-    mxArray *prhs[MAXRHS];
+    bxArray *plhs[2];
+    bxArray *prhs[MAXRHS];
     int xrhs, nrhs;
     int verbose, neval;
     struct user_function_data_s *dpre;
@@ -97,26 +99,26 @@ static double user_function(unsigned n, const double *x, double *gradient, /* NU
     double f;
 
     d->plhs[0] = d->plhs[1] = NULL;
-    memcpy(mxGetPr(d->prhs[d->xrhs]), x, n * sizeof(double));
+    memcpy(bxGetPr(d->prhs[d->xrhs]), x, n * sizeof(double));
 
     CHECK0(0 == mexCallMATLAB(gradient ? 2 : 1, d->plhs, d->nrhs, d->prhs, d->f), "error calling user function");
 
-    CHECK0(mxIsNumeric(d->plhs[0]) && !mxIsComplex(d->plhs[0]) && mxGetM(d->plhs[0]) * mxGetN(d->plhs[0]) == 1,
+    CHECK0(bxIsNumeric(d->plhs[0]) && !bxIsComplex(d->plhs[0]) && bxGetM(d->plhs[0]) * bxGetN(d->plhs[0]) == 1,
            "user function must return real scalar");
-    f = mxGetScalar(d->plhs[0]);
-    mxDestroyArray(d->plhs[0]);
+    f = bxGetScalar(d->plhs[0]);
+    bxDestroyArray(d->plhs[0]);
     if (gradient)
     {
-        CHECK0(mxIsDouble(d->plhs[1]) && !mxIsComplex(d->plhs[1]) &&
-                   (mxGetM(d->plhs[1]) == 1 || mxGetN(d->plhs[1]) == 1) && mxGetM(d->plhs[1]) * mxGetN(d->plhs[1]) == n,
+        CHECK0(bxIsDouble(d->plhs[1]) && !bxIsComplex(d->plhs[1]) &&
+                   (bxGetM(d->plhs[1]) == 1 || bxGetN(d->plhs[1]) == 1) && bxGetM(d->plhs[1]) * bxGetN(d->plhs[1]) == n,
                "gradient vector from user function is the wrong size");
-        memcpy(gradient, mxGetPr(d->plhs[1]), n * sizeof(double));
-        mxDestroyArray(d->plhs[1]);
+        memcpy(gradient, bxGetPr(d->plhs[1]), n * sizeof(double));
+        bxDestroyArray(d->plhs[1]);
     }
     d->neval++;
     if (d->verbose)
-        mexPrintf("nlopt_optimize eval #%d: %g\n", d->neval, f);
-    if (mxIsNaN(f))
+        bxPrintf("nlopt_optimize eval #%d: %g\n", d->neval, f);
+    if (bxIsNaN(f))
         nlopt_force_stop(d->opt);
     return f;
 }
@@ -125,32 +127,32 @@ static void user_pre(unsigned n, const double *x, const double *v, double *vpre,
 {
     user_function_data *d = ((user_function_data *)d_)->dpre;
     d->plhs[0] = d->plhs[1] = NULL;
-    memcpy(mxGetPr(d->prhs[d->xrhs]), x, n * sizeof(double));
-    memcpy(mxGetPr(d->prhs[d->xrhs + 1]), v, n * sizeof(double));
+    memcpy(bxGetPr(d->prhs[d->xrhs]), x, n * sizeof(double));
+    memcpy(bxGetPr(d->prhs[d->xrhs + 1]), v, n * sizeof(double));
 
     CHECK0(0 == mexCallMATLAB(1, d->plhs, d->nrhs, d->prhs, d->f), "error calling user function");
 
-    CHECK0(mxIsDouble(d->plhs[0]) && !mxIsComplex(d->plhs[0]) && (mxGetM(d->plhs[0]) == 1 || mxGetN(d->plhs[0]) == 1) &&
-               mxGetM(d->plhs[0]) * mxGetN(d->plhs[0]) == n,
+    CHECK0(bxIsDouble(d->plhs[0]) && !bxIsComplex(d->plhs[0]) && (bxGetM(d->plhs[0]) == 1 || bxGetN(d->plhs[0]) == 1) &&
+               bxGetM(d->plhs[0]) * bxGetN(d->plhs[0]) == n,
            "vpre vector from user function is the wrong size");
-    memcpy(vpre, mxGetPr(d->plhs[0]), n * sizeof(double));
-    mxDestroyArray(d->plhs[0]);
+    memcpy(vpre, bxGetPr(d->plhs[0]), n * sizeof(double));
+    bxDestroyArray(d->plhs[0]);
     d->neval++;
     if (d->verbose)
-        mexPrintf("nlopt_optimize precond eval #%d\n", d->neval);
+        bxPrintf("nlopt_optimize precond eval #%d\n", d->neval);
 }
 
 #define CHECK1(cond, msg)                                                                                              \
     if (!(cond))                                                                                                       \
     {                                                                                                                  \
-        mxFree(tmp);                                                                                                   \
+        bxFree(tmp);                                                                                                   \
         nlopt_destroy(opt);                                                                                            \
         nlopt_destroy(local_opt);                                                                                      \
-        mexWarnMsgTxt(msg);                                                                                            \
+        bexWarnMsgTxt(msg);                                                                                            \
         return NULL;                                                                                                   \
     };
 
-nlopt_opt make_opt(const mxArray *opts, unsigned n)
+nlopt_opt make_opt(const bxArray *opts, unsigned n)
 {
     nlopt_opt opt = NULL, local_opt = NULL;
     nlopt_algorithm algorithm;
@@ -160,7 +162,7 @@ nlopt_opt make_opt(const mxArray *opts, unsigned n)
     algorithm = (nlopt_algorithm)struct_val_default(opts, "algorithm", NLOPT_NUM_ALGORITHMS);
     CHECK1(((int)algorithm) >= 0 && algorithm < NLOPT_NUM_ALGORITHMS, "invalid opt.algorithm");
 
-    tmp = (double *)mxCalloc(n, sizeof(double));
+    tmp = (double *)bxCalloc(n, sizeof(double));
     opt = nlopt_create(algorithm, n);
     CHECK1(opt, "nlopt: out of memory");
 
@@ -182,47 +184,47 @@ nlopt_opt make_opt(const mxArray *opts, unsigned n)
     if (struct_arrval(opts, "initial_step", n, NULL))
         nlopt_set_initial_step(opt, struct_arrval(opts, "initial_step", n, NULL));
 
-    if (mxGetField(opts, 0, "local_optimizer"))
+    if (bxGetField(opts, 0, "local_optimizer"))
     {
-        const mxArray *local_opts = mxGetField(opts, 0, "local_optimizer");
-        CHECK1(mxIsStruct(local_opts), "opt.local_optimizer must be a structure");
+        const bxArray *local_opts = bxGetField(opts, 0, "local_optimizer");
+        CHECK1(bxIsStruct(local_opts), "opt.local_optimizer must be a structure");
         CHECK1(local_opt = make_opt(local_opts, n), "error initializing local optimizer");
         nlopt_set_local_optimizer(opt, local_opt);
         nlopt_destroy(local_opt);
         local_opt = NULL;
     }
 
-    mxFree(tmp);
+    bxFree(tmp);
     return opt;
 }
 
 #define CHECK(cond, msg)                                                                                               \
     if (!(cond))                                                                                                       \
     {                                                                                                                  \
-        mxFree(dh);                                                                                                    \
-        mxFree(dfc);                                                                                                   \
+        bxFree(dh);                                                                                                    \
+        bxFree(dfc);                                                                                                   \
         nlopt_destroy(opt);                                                                                            \
-        mexErrMsgTxt(msg);                                                                                             \
+        bxErrMsgTxt(msg);                                                                                             \
     }
 
-void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
+void mexFunction(int nlhs, bxArray *plhs[], int nrhs, const bxArray *prhs[])
 {
     unsigned n;
     double *x, *x0, opt_f;
     nlopt_result ret;
-    mxArray *x_mx, *mx;
+    bxArray *x_bx, *bx;
     user_function_data d, dpre, *dfc = NULL, *dh = NULL;
     nlopt_opt opt = NULL;
 
     CHECK(nrhs == 2 && nlhs <= 3, "wrong number of arguments");
 
     /* options = prhs[0] */
-    CHECK(mxIsStruct(prhs[0]), "opt must be a struct");
+    CHECK(bxIsStruct(prhs[0]), "opt must be a struct");
 
     /* x0 = prhs[1] */
-    CHECK(mxIsDouble(prhs[1]) && !mxIsComplex(prhs[1]) && (mxGetM(prhs[1]) == 1 || mxGetN(prhs[1]) == 1),
+    CHECK(bxIsDouble(prhs[1]) && !bxIsComplex(prhs[1]) && (bxGetM(prhs[1]) == 1 || bxGetN(prhs[1]) == 1),
           "x must be real row or column vector");
-    n = mxGetM(prhs[1]) * mxGetN(prhs[1]), x0 = mxGetPr(prhs[1]);
+    n = bxGetM(prhs[1]) * bxGetN(prhs[1]), x0 = bxGetPr(prhs[1]);
 
     CHECK(opt = make_opt(prhs[0], n), "error initializing nlopt options");
 
@@ -231,37 +233,37 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
     d.opt = opt;
 
     /* function f = prhs[1] */
-    mx = struct_funcval(prhs[0], "min_objective");
-    if (!mx)
-        mx = struct_funcval(prhs[0], "max_objective");
-    CHECK(mx, "either opt.min_objective or opt.max_objective must exist");
-    if (mxIsChar(mx))
+    bx = struct_funcval(prhs[0], "min_objective");
+    if (!bx)
+        bx = struct_funcval(prhs[0], "max_objective");
+    CHECK(bx, "either opt.min_objective or opt.max_objective must exist");
+    if (bxIsChar(bx))
     {
-        CHECK(mxGetString(mx, d.f, FLEN) == 0, "error reading function name string (too long?)");
+        CHECK(bxGetString(bx, d.f, FLEN) == 0, "error reading function name string (too long?)");
         d.nrhs = 1;
         d.xrhs = 0;
     }
     else
     {
-        d.prhs[0] = mx;
+        d.prhs[0] = bx;
         strcpy(d.f, "feval");
         d.nrhs = 2;
         d.xrhs = 1;
     }
-    d.prhs[d.xrhs] = mxCreateDoubleMatrix(1, n, mxREAL);
+    d.prhs[d.xrhs] = bxCreateDoubleMatrix(1, n, bxREAL);
 
-    if ((mx = struct_funcval(prhs[0], "pre")))
+    if ((bx = struct_funcval(prhs[0], "pre")))
     {
-        CHECK(mxIsChar(mx) || mxIsFunctionHandle(mx), "pre must contain function handles or function names");
-        if (mxIsChar(mx))
+        CHECK(bxIsChar(bx) || bxIsFunctionHandle(bx), "pre must contain function handles or function names");
+        if (bxIsChar(bx))
         {
-            CHECK(mxGetString(mx, dpre.f, FLEN) == 0, "error reading function name string (too long?)");
+            CHECK(bxGetString(bx, dpre.f, FLEN) == 0, "error reading function name string (too long?)");
             dpre.nrhs = 2;
             dpre.xrhs = 0;
         }
         else
         {
-            dpre.prhs[0] = mx;
+            dpre.prhs[0] = bx;
             strcpy(dpre.f, "feval");
             dpre.nrhs = 3;
             dpre.xrhs = 1;
@@ -270,7 +272,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         dpre.opt = opt;
         dpre.neval = 0;
         dpre.prhs[dpre.xrhs] = d.prhs[d.xrhs];
-        dpre.prhs[d.xrhs + 1] = mxCreateDoubleMatrix(1, n, mxREAL);
+        dpre.prhs[d.xrhs + 1] = bxCreateDoubleMatrix(1, n, bxREAL);
         d.dpre = &dpre;
 
         if (struct_funcval(prhs[0], "min_objective"))
@@ -287,24 +289,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
             nlopt_set_max_objective(opt, user_function, &d);
     }
 
-    if ((mx = mxGetField(prhs[0], 0, "fc")))
+    if ((bx = bxGetField(prhs[0], 0, "fc")))
     {
         int j, m;
         double *fc_tol;
 
-        CHECK(mxIsCell(mx), "fc must be a Cell array");
-        m = mxGetM(mx) * mxGetN(mx);
+        CHECK(bxIsCell(bx), "fc must be a Cell array");
+        m = bxGetM(bx) * bxGetN(bx);
         ;
-        dfc = (user_function_data *)mxCalloc(m, sizeof(user_function_data));
+        dfc = (user_function_data *)bxCalloc(m, sizeof(user_function_data));
         fc_tol = struct_arrval(prhs[0], "fc_tol", m, NULL);
 
         for (j = 0; j < m; ++j)
         {
-            mxArray *fc = mxGetCell(mx, j);
-            CHECK(mxIsChar(fc) || mxIsFunctionHandle(fc), "fc must contain function handles or function names");
-            if (mxIsChar(fc))
+            bxArray *fc = bxGetCell(bx, j);
+            CHECK(bxIsChar(fc) || bxIsFunctionHandle(fc), "fc must contain function handles or function names");
+            if (bxIsChar(fc))
             {
-                CHECK(mxGetString(fc, dfc[j].f, FLEN) == 0, "error reading function name string (too long?)");
+                CHECK(bxGetString(fc, dfc[j].f, FLEN) == 0, "error reading function name string (too long?)");
                 dfc[j].nrhs = 1;
                 dfc[j].xrhs = 0;
             }
@@ -324,24 +326,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         }
     }
 
-    if ((mx = mxGetField(prhs[0], 0, "h")))
+    if ((bx = bxGetField(prhs[0], 0, "h")))
     {
         int j, m;
         double *h_tol;
 
-        CHECK(mxIsCell(mx), "h must be a Cell array");
-        m = mxGetM(mx) * mxGetN(mx);
+        CHECK(bxIsCell(bx), "h must be a Cell array");
+        m = bxGetM(bx) * bxGetN(bx);
         ;
-        dh = (user_function_data *)mxCalloc(m, sizeof(user_function_data));
+        dh = (user_function_data *)bxCalloc(m, sizeof(user_function_data));
         h_tol = struct_arrval(prhs[0], "h_tol", m, NULL);
 
         for (j = 0; j < m; ++j)
         {
-            mxArray *h = mxGetCell(mx, j);
-            CHECK(mxIsChar(h) || mxIsFunctionHandle(h), "h must contain function handles or function names");
-            if (mxIsChar(h))
+            bxArray *h = bxGetCell(bx, j);
+            CHECK(bxIsChar(h) || bxIsFunctionHandle(h), "h must contain function handles or function names");
+            if (bxIsChar(h))
             {
-                CHECK(mxGetString(h, dh[j].f, FLEN) == 0, "error reading function name string (too long?)");
+                CHECK(bxGetString(h, dh[j].f, FLEN) == 0, "error reading function name string (too long?)");
                 dh[j].nrhs = 1;
                 dh[j].xrhs = 0;
             }
@@ -361,28 +363,28 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         }
     }
 
-    x_mx = mxCreateDoubleMatrix(mxGetM(prhs[1]), mxGetN(prhs[1]), mxREAL);
-    x = mxGetPr(x_mx);
+    x_bx = bxCreateDoubleMatrix(bxGetM(prhs[1]), bxGetN(prhs[1]), bxREAL);
+    x = bxGetPr(x_bx);
     memcpy(x, x0, sizeof(double) * n);
 
     ret = nlopt_optimize(opt, x, &opt_f);
 
-    mxFree(dh);
-    mxFree(dfc);
-    mxDestroyArray(d.prhs[d.xrhs]);
+    bxFree(dh);
+    bxFree(dfc);
+    bxDestroyArray(d.prhs[d.xrhs]);
     if (dpre.nrhs > 0)
-        mxDestroyArray(dpre.prhs[d.xrhs + 1]);
+        bxDestroyArray(dpre.prhs[d.xrhs + 1]);
     nlopt_destroy(opt);
 
-    plhs[0] = x_mx;
+    plhs[0] = x_bx;
     if (nlhs > 1)
     {
-        plhs[1] = mxCreateDoubleMatrix(1, 1, mxREAL);
-        *(mxGetPr(plhs[1])) = opt_f;
+        plhs[1] = bxCreateDoubleMatrix(1, 1, bxREAL);
+        *(bxGetPr(plhs[1])) = opt_f;
     }
     if (nlhs > 2)
     {
-        plhs[2] = mxCreateDoubleMatrix(1, 1, mxREAL);
-        *(mxGetPr(plhs[2])) = (int)ret;
+        plhs[2] = bxCreateDoubleMatrix(1, 1, bxREAL);
+        *(bxGetPr(plhs[2])) = (int)ret;
     }
 }
