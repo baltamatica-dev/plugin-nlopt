@@ -239,7 +239,7 @@ void mexFunction(int nlhs, bxArray *plhs[], int nrhs, const bxArray *prhs[])
     CHECK(bx, "either opt.min_objective or opt.max_objective must exist");
     if (bxIsChar(bx))
     {
-        CHECK(bxGetString(bx, d.f, FLEN) == 0, "error reading function name string (too long?)");
+        CHECK(bxAsCStr(bx, d.f, FLEN) == 0, "error reading function name string (too long?)");
         d.nrhs = 1;
         d.xrhs = 0;
     }
@@ -257,7 +257,7 @@ void mexFunction(int nlhs, bxArray *plhs[], int nrhs, const bxArray *prhs[])
         CHECK(bxIsChar(bx) || bxIsFunctionHandle(bx), "pre must contain function handles or function names");
         if (bxIsChar(bx))
         {
-            CHECK(bxGetString(bx, dpre.f, FLEN) == 0, "error reading function name string (too long?)");
+            CHECK(bxAsCStr(bx, dpre.f, FLEN) == 0, "error reading function name string (too long?)");
             dpre.nrhs = 2;
             dpre.xrhs = 0;
         }
@@ -306,7 +306,7 @@ void mexFunction(int nlhs, bxArray *plhs[], int nrhs, const bxArray *prhs[])
             CHECK(bxIsChar(fc) || bxIsFunctionHandle(fc), "fc must contain function handles or function names");
             if (bxIsChar(fc))
             {
-                CHECK(bxGetString(fc, dfc[j].f, FLEN) == 0, "error reading function name string (too long?)");
+                CHECK(bxAsCStr(fc, dfc[j].f, FLEN) == 0, "error reading function name string (too long?)");
                 dfc[j].nrhs = 1;
                 dfc[j].xrhs = 0;
             }
@@ -343,7 +343,7 @@ void mexFunction(int nlhs, bxArray *plhs[], int nrhs, const bxArray *prhs[])
             CHECK(bxIsChar(h) || bxIsFunctionHandle(h), "h must contain function handles or function names");
             if (bxIsChar(h))
             {
-                CHECK(bxGetString(h, dh[j].f, FLEN) == 0, "error reading function name string (too long?)");
+                CHECK(bxAsCStr(h, dh[j].f, FLEN) == 0, "error reading function name string (too long?)");
                 dh[j].nrhs = 1;
                 dh[j].xrhs = 0;
             }
