@@ -23,15 +23,14 @@
 /* Baltam bex interface to NLopt, and in particular to nlopt_optimize */
 
 #include <math.h>
-#include <bex/bex.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "nlopt_bex.hpp"
 
+// windows
+#define NLOPT_DLL
 #include "nlopt.h"
-#define bexWarnMsgTxt  bxPrintf
-#define bxFree		free
-#define bxCalloc	calloc
 
 
 #define CHECK0(cond, msg)                                                                                              \
