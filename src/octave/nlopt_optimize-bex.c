@@ -208,7 +208,7 @@ nlopt_opt make_opt(const bxArray *opts, unsigned n)
         bxErrMsgTxt(msg);                                                                                             \
     }
 
-void mexFunction(int nlhs, bxArray *plhs[], int nrhs, const bxArray *prhs[])
+void nlopt_optimize(int nlhs, bxArray *plhs[], int nrhs, const bxArray *prhs[])
 {
     unsigned n;
     double *x, *x0, opt_f;

@@ -15,3 +15,5 @@
 extern double bxGetScalar(const bxArray*);
 extern bool bxIsNumeric(const bxArray*);
 extern int mexCallMATLAB(int nlhs, bxArray *plhs[], int nrhs, bxArray *prhs[], const char *functionName);
+
+extern void nlopt_optimize(int nlhs, bxArray *plhs[], int nrhs, const bxArray *prhs[]);

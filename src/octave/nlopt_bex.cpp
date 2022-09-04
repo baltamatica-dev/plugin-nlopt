@@ -67,13 +67,18 @@ int bxPluginFini() {
  */
 bexfun_info_t * bxPluginFunctions() {
     // 已定义的插件函数个数
-    constexpr size_t TOTAL_PLUGIN_FUNCTIONS = 1;
+    constexpr size_t TOTAL_PLUGIN_FUNCTIONS = 2;
     bexfun_info_t* func_list_dyn = new bexfun_info_t[TOTAL_PLUGIN_FUNCTIONS + 1];
 
     size_t i = 0;
     func_list_dyn[i].name = "nlopt_version";
     func_list_dyn[i].ptr  = nlopt_version;
     func_list_dyn[i].help = nlopt_version_help;
+
+    i++;
+    func_list_dyn[i].name = "__nlopt_optimize_impl";
+    func_list_dyn[i].ptr  = nlopt_optimize;
+    func_list_dyn[i].help = nullptr;
 
     // 最后一个元素, `name` 字段必须为空字符串 `""`
     i++;
