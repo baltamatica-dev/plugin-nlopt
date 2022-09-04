@@ -30,6 +30,8 @@
 
 #include "nlopt.h"
 #define bexWarnMsgTxt  bxPrintf
+#define bxFree		free
+#define bxCalloc	calloc
 
 
 #define CHECK0(cond, msg)                                                                                              \
